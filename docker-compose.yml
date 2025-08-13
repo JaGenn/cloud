@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_URL}
+    ports:
+      - "5432:5432"
