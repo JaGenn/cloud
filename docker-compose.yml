@@ -1,14 +1,13 @@
 version: '3.8'
 
 services:
-  database:
+  db:
     image: postgres
-    env_file:
-      - .env
+    container_name: db
     environment:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: cloud
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "15432:5432"
     volumes:
@@ -16,12 +15,27 @@ services:
 
   redis:
     image: redis:7
+    container_name: redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server ~/data --console-address :9090
+    ports:
+      - '9090:9090'
+      - '9000:9000'
+    volumes:
+      - minio-data:/data
+
 
 volumes:
   postgres_data:
   redis_data:
+  minio-data:
