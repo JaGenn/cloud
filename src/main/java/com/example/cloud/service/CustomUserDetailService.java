@@ -1,6 +1,7 @@
 package com.example.cloud.service;
 
 import com.example.cloud.model.entity.User;
+import com.example.cloud.model.props.CustomUserDetails;
 import com.example.cloud.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,10 +21,10 @@ public class CustomUserDetailService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getUsername())
-                .password(user.getPassword())
-                .authorities("USER")
-                .build();
+        return new CustomUserDetails(
+                user.getId(),
+                user.getUsername(),
+                user.getPassword()
+        );
     }
 }
