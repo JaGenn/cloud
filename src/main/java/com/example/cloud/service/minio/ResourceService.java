@@ -1,19 +1,25 @@
 package com.example.cloud.service.minio;
 
+import com.example.cloud.exception.DirectoryOperationErrorException;
 import com.example.cloud.exception.FileOperationErrorException;
 import com.example.cloud.model.dto.ResourceResponseDto;
 import com.example.cloud.util.PathUtils;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
 import io.minio.messages.Item;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -21,9 +27,11 @@ import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.example.cloud.util.PathUtils.extractFileName;
+import static com.example.cloud.util.PathUtils.normalizeDirectoryPath;
 import static com.example.cloud.util.UserContext.getUserFolder;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ResourceService {
@@ -32,6 +40,34 @@ public class ResourceService {
     private String bucketName;
 
     private final MinioClient minioClient;
+    private final DirectoryService directoryService;
+
+    public void download(Long userId, String path, HttpServletResponse response) {
+
+        if (path.endsWith("/")) {
+
+            response.setContentType("application/zip");
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + extractFileName(path) + ".zip\"");
+
+            directoryService.downloadDirectoryAsZip(userId, path, response);
+            log.info("Directory by path {} was downloaded as zip", path);
+
+        } else {
+
+            try (InputStream inputStream = downloadFile(userId, path)) {
+                response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+                response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + extractFileName(path) + "\"");
+
+                inputStream.transferTo(response.getOutputStream());
+                log.info("File {} was downloaded successful", path);
+
+            } catch (IOException e) {
+                throw new FileOperationErrorException("File download failed");
+            }
+        }
+    }
 
     @SneakyThrows
     public List<ResourceResponseDto> uploadFile(Long userId, String path, List<MultipartFile> files) {
@@ -124,7 +160,7 @@ public class ResourceService {
     }
 
 
-    public InputStream downloadFile(Long userId, String path) {
+    private InputStream downloadFile(Long userId, String path) {
         String fullPath = getUserFolder(userId) + path;
 
         try {
@@ -147,19 +183,27 @@ public class ResourceService {
             throw new FileAlreadyExistsException("File with name " + toPath + " already exists in this directory");
         }
 
-        minioClient.copyObject(
-                CopyObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(toFullPath)
-                        .source(CopySource.builder()
-                                .bucket(bucketName)
-                                .object(fromFullPath)
-                                .build())
-                        .build()
-        );
+        if (fromFullPath.endsWith("/")) {
+            directoryService.moveDirectory(userId, fromPath, toPath);
+        } else {
 
-        deleteFile(userId, fromPath);
+            minioClient.copyObject(
+                    CopyObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(toFullPath)
+                            .source(CopySource.builder()
+                                    .bucket(bucketName)
+                                    .object(fromFullPath)
+                                    .build())
+                            .build()
+            );
+
+            deleteFile(userId, fromPath);
+        }
+
     }
+
+
 
     @SneakyThrows
     public List<ResourceResponseDto> searchFiles(Long userId, String query) {
