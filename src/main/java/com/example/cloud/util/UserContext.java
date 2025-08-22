@@ -9,21 +9,13 @@ public class UserContext {
 
     public static Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {
-            return userDetails.getId();
-        }
-        throw new IllegalStateException("Invalid principal type");
+        CustomUserDetails userDetails = (CustomUserDetails) auth.getPrincipal();
+        return userDetails.getId();
     }
 
     public static String getUserFolder(Long id) {
-        return "user-" + id + "-files/";
+        String userPath = "user-" + id + "-files";
+        return userPath.endsWith("/") ? userPath : userPath + "/";
     }
 
-    public static String getCurrentUserName() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {
-            return userDetails.getUsername();
-        }
-        throw new IllegalStateException("Invalid principal type");
-    }
 }
