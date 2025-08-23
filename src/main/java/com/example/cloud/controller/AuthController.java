@@ -1,58 +1,46 @@
 package com.example.cloud.controller;
 
-import com.example.cloud.model.dto.UserDto;
+import com.example.cloud.model.dto.UserAuthDto;
+import com.example.cloud.model.dto.UserResponseDto;
 import com.example.cloud.model.entity.User;
-import com.example.cloud.repository.UserRepository;
-import jakarta.validation.Valid;
+import com.example.cloud.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Controller
+
+@Slf4j
+@RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication Controller", description = "User Authentication API")
 public class AuthController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
 
-    @GetMapping("/sign-in")
-    public String signIn(@RequestParam(value = "error", required = false) String error,
-                         Model model) {
-        if (error != null) {
-            model.addAttribute("error", "Неверный логин или пароль");
-        }
-        return "sign-in";
-    }
-
-    @GetMapping("/sign-up")
-    public String signUp(Model model) {
-        model.addAttribute("userDto", new UserDto());
-        return "sign-up";
+    @PostMapping("/sign-in")
+    @Operation(summary = "User login")
+    public ResponseEntity<UserResponseDto> signIn(@RequestBody UserAuthDto userAuthDto,
+                                                  HttpServletRequest request, HttpServletResponse response) {
+        log.info("POST /api/auth/sign-in username: {}", userAuthDto.getUsername());
+        UserResponseDto responseDto = authService.authenticateUser(userAuthDto, request, response);
+        return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
     @PostMapping("/sign-up")
-    public String signUp(@Valid @ModelAttribute("userDto") UserDto userDto, BindingResult result, Model model) {
-
-        if (result.hasErrors()) {
-            return "sign-up";
-        }
-
-        User user = new User();
-        user.setUsername(userDto.getUsername());
-        user.setPassword(passwordEncoder.encode(userDto.getPassword()));
-
-        try {
-            userRepository.save(user);
-        } catch (DataIntegrityViolationException e) {
-            model.addAttribute("error", "Такой пользователь уже зарегистрирован");
-            return "sign-up";
-        }
-
-        return "redirect:/";
+    @Operation(summary = "User registration")
+    public ResponseEntity<UserResponseDto> signUp(@RequestBody UserAuthDto userDto) {
+        log.info("POST /api/auth/sign-up username: {}", userDto.getUsername());
+        User createdUser = authService.registerUser(userDto);
+        UserResponseDto responseDto = new UserResponseDto(createdUser.getUsername());
+        return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
     }
+
+
 }
