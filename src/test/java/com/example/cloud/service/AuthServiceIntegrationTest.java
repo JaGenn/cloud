@@ -8,10 +8,11 @@ import com.example.cloud.repository.UserRepository;
 import jakarta.persistence.EntityExistsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -32,6 +33,12 @@ public class AuthServiceIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private MockHttpServletRequest request;
+
+    @Mock
+    private MockHttpServletResponse response;
+
     @BeforeEach
     void clearDatabase() {
         userRepository.deleteAll();
@@ -41,7 +48,7 @@ public class AuthServiceIntegrationTest extends BaseIntegrationTest {
     void registerUser_success() {
         UserAuthDto registrationDto = new UserAuthDto("testuser", "password123");
 
-        User registeredUser = authService.registerUser(registrationDto);
+        User registeredUser = authService.registerUser(registrationDto, request, response);
 
         assertThat(registeredUser).isNotNull();
         assertThat(registeredUser.getUsername()).isEqualTo("testuser");
@@ -57,9 +64,9 @@ public class AuthServiceIntegrationTest extends BaseIntegrationTest {
         UserAuthDto firstUser = new UserAuthDto("testuser", "password123");
         UserAuthDto secondUser = new UserAuthDto("testuser", "password123");
 
-        authService.registerUser(firstUser);
+        authService.registerUser(firstUser, request, response);
 
-        assertThatThrownBy(() -> authService.registerUser(secondUser))
+        assertThatThrownBy(() -> authService.registerUser(secondUser, request, response))
                 .isInstanceOf(EntityExistsException.class)
                 .hasMessageContaining("User testuser already exists");
     }
@@ -68,7 +75,7 @@ public class AuthServiceIntegrationTest extends BaseIntegrationTest {
     @Test
     void authenticateUser_success() {
         UserAuthDto registrationDto = new UserAuthDto("testuser", "password123");
-        authService.registerUser(registrationDto);
+        authService.registerUser(registrationDto, request, response);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -81,15 +88,14 @@ public class AuthServiceIntegrationTest extends BaseIntegrationTest {
     @Test
     void authenticateUser_invalidUserData() {
         UserAuthDto registrationDto = new UserAuthDto("testuser", "password123");
-        authService.registerUser(registrationDto);
+        authService.registerUser(registrationDto, request, response);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         UserAuthDto wrongPasswordDto = new UserAuthDto("testuser", "wrongPassword");
         assertThatThrownBy(() -> authService.authenticateUser(wrongPasswordDto, request, response))
-                .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("Invalid username or password");
+                .isInstanceOf(BadCredentialsException.class);
     }
 
 
