@@ -42,5 +42,12 @@ public class AuthController {
         return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
     }
 
+    @PostMapping("/sign-out")
+    @Operation(summary = "User logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<Void> signOut() {
+        return ResponseEntity.noContent().build();
+    }
+
 
 }
