@@ -1,7 +1,7 @@
 package com.example.cloud.service.minio;
 import com.example.cloud.exception.DirectoryOperationErrorException;
-import com.example.cloud.model.dto.DirectoryResponseDto;
-import com.example.cloud.model.dto.ResourceResponseDto;
+import com.example.cloud.model.dto.response.DirectoryResponseDto;
+import com.example.cloud.model.dto.response.ResourceResponseDto;
 import io.minio.*;
 import io.minio.messages.Item;
 import jakarta.servlet.http.HttpServletResponse;

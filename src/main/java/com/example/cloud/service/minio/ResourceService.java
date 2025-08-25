@@ -1,8 +1,7 @@
 package com.example.cloud.service.minio;
 
-import com.example.cloud.exception.DirectoryOperationErrorException;
 import com.example.cloud.exception.FileOperationErrorException;
-import com.example.cloud.model.dto.ResourceResponseDto;
+import com.example.cloud.model.dto.response.ResourceResponseDto;
 import com.example.cloud.util.PathUtils;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
@@ -28,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.example.cloud.util.PathUtils.extractFileName;
-import static com.example.cloud.util.PathUtils.normalizeDirectoryPath;
 import static com.example.cloud.util.UserContext.getUserFolder;
 
 @Slf4j

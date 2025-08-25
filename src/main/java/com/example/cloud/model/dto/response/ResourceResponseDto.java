@@ -1,4 +1,4 @@
-package com.example.cloud.model.dto;
+package com.example.cloud.model.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

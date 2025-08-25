@@ -1,7 +1,7 @@
 package com.example.cloud.controller;
 
-import com.example.cloud.model.dto.UserAuthDto;
-import com.example.cloud.model.dto.UserResponseDto;
+import com.example.cloud.model.dto.request.UserAuthDto;
+import com.example.cloud.model.dto.response.UserResponseDto;
 import com.example.cloud.model.entity.User;
 import com.example.cloud.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;

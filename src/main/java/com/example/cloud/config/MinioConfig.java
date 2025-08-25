@@ -1,6 +1,6 @@
 package com.example.cloud.config;
 
-import com.example.cloud.model.props.MinioProperties;
+import com.example.cloud.model.properties.MinioProperties;
 import io.minio.MinioClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

@@ -2,7 +2,7 @@ package com.example.cloud.controller;
 
 import com.example.cloud.exception.DirectoryOperationErrorException;
 import com.example.cloud.exception.FileOperationErrorException;
-import com.example.cloud.model.dto.ErrorResponseDto;
+import com.example.cloud.model.dto.response.ErrorResponseDto;
 import jakarta.persistence.EntityExistsException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
