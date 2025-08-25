@@ -19,7 +19,7 @@ import java.nio.file.FileAlreadyExistsException;
 
 @Slf4j
 @RestControllerAdvice
-public class ControllerAdvice {
+public class GlobalControllerAdvice {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> exception(Exception e) {
