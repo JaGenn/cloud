@@ -35,9 +35,10 @@ public class AuthController {
 
     @PostMapping("/sign-up")
     @Operation(summary = "User registration")
-    public ResponseEntity<UserResponseDto> signUp(@RequestBody UserAuthDto userDto) {
+    public ResponseEntity<UserResponseDto> signUp(@RequestBody UserAuthDto userDto,
+                                                  HttpServletRequest request, HttpServletResponse response) {
         log.info("POST /api/auth/sign-up username: {}", userDto.getUsername());
-        User createdUser = authService.registerUser(userDto);
+        User createdUser = authService.registerUser(userDto, request, response);
         UserResponseDto responseDto = new UserResponseDto(createdUser.getUsername());
         return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
     }
