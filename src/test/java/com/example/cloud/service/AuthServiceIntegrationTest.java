@@ -6,6 +6,8 @@ import com.example.cloud.model.dto.response.UserResponseDto;
 import com.example.cloud.model.entity.User;
 import com.example.cloud.repository.UserRepository;
 import jakarta.persistence.EntityExistsException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -34,10 +36,10 @@ public class AuthServiceIntegrationTest extends BaseIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private MockHttpServletRequest request;
+    private HttpServletRequest request;
 
     @Mock
-    private MockHttpServletResponse response;
+    private HttpServletResponse response;
 
     @BeforeEach
     void clearDatabase() {
