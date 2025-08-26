@@ -1,7 +1,7 @@
 package com.example.cloud.controller.minio;
 
-import com.example.cloud.model.dto.DirectoryResponseDto;
-import com.example.cloud.model.dto.ResourceResponseDto;
+import com.example.cloud.model.dto.response.DirectoryResponseDto;
+import com.example.cloud.model.dto.response.ResourceResponseDto;
 import com.example.cloud.service.minio.DirectoryService;
 import com.example.cloud.util.PathUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,8 +29,8 @@ public class DirectoryController {
     @GetMapping
     @Operation(summary = "Get directory content by path")
     public ResponseEntity<List<ResourceResponseDto>> getDirectoryContent(@RequestParam String path) {
-        PathUtils.validatePath(path);
         log.info("GET /api/directory/{}", path);
+        PathUtils.validatePath(path);
         Long userId = getCurrentUserId();
         List<ResourceResponseDto> responseDto = directoryService.getDirectoryContent(userId, path);
         log.info("Directory content by path {} was found successfully", path.isEmpty() ? "/" : path);
@@ -41,8 +41,8 @@ public class DirectoryController {
     @PostMapping
     @Operation(summary = "Create directory by path")
     public ResponseEntity<DirectoryResponseDto> createDirectory(@RequestParam String path) {
-        PathUtils.validatePath(path);
         log.info("POST /api/directory/{}", path);
+        PathUtils.validatePath(path);
         Long userId = getCurrentUserId();
         DirectoryResponseDto result = directoryService.createDirectory(userId, path);
         log.info("Directory {} created successfully", path);

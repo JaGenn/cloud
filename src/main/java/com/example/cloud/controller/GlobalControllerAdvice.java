@@ -2,12 +2,14 @@ package com.example.cloud.controller;
 
 import com.example.cloud.exception.DirectoryOperationErrorException;
 import com.example.cloud.exception.FileOperationErrorException;
-import com.example.cloud.model.dto.ErrorResponseDto;
+import com.example.cloud.exception.ResourceDownloadException;
+import com.example.cloud.model.dto.response.ErrorResponseDto;
 import jakarta.persistence.EntityExistsException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,7 +21,7 @@ import java.nio.file.FileAlreadyExistsException;
 
 @Slf4j
 @RestControllerAdvice
-public class ControllerAdvice {
+public class GlobalControllerAdvice {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> exception(Exception e) {
@@ -82,6 +84,18 @@ public class ControllerAdvice {
     public ResponseEntity<ErrorResponseDto> handleNoResourceFoundException(NoResourceFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponseDto(HttpStatus.NOT_FOUND.value(), "Required resource not found"));
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponseDto> handleBadCredentialsException(BadCredentialsException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(ResourceDownloadException.class)
+    public ResponseEntity<ErrorResponseDto> handleResourceDownloadException(ResourceDownloadException e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
     }
 
 

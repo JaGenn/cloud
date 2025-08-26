@@ -1,6 +1,6 @@
 package com.example.cloud.util;
 
-import com.example.cloud.model.props.CustomUserDetails;
+import com.example.cloud.security.CustomUserDetails;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
