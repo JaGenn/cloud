@@ -2,6 +2,7 @@ package com.example.cloud.controller;
 
 import com.example.cloud.exception.DirectoryOperationErrorException;
 import com.example.cloud.exception.FileOperationErrorException;
+import com.example.cloud.exception.ResourceDownloadException;
 import com.example.cloud.model.dto.response.ErrorResponseDto;
 import jakarta.persistence.EntityExistsException;
 import lombok.extern.slf4j.Slf4j;
@@ -89,6 +90,12 @@ public class GlobalControllerAdvice {
     public ResponseEntity<ErrorResponseDto> handleBadCredentialsException(BadCredentialsException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(ResourceDownloadException.class)
+    public ResponseEntity<ErrorResponseDto> handleResourceDownloadException(ResourceDownloadException e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()));
     }
 
 
