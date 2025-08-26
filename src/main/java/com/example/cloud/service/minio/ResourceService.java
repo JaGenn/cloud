@@ -1,16 +1,17 @@
 package com.example.cloud.service.minio;
 
 import com.example.cloud.exception.FileOperationErrorException;
+import com.example.cloud.exception.ResourceDownloadException;
 import com.example.cloud.model.dto.response.ResourceResponseDto;
 import com.example.cloud.util.PathUtils;
 import io.minio.*;
-import io.minio.errors.ErrorResponseException;
 import io.minio.messages.Item;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
+import io.minio.errors.ErrorResponseException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -39,6 +40,7 @@ public class ResourceService {
 
     private final MinioClient minioClient;
     private final DirectoryService directoryService;
+    private final MinioStorageService minioStorageService;
 
     public void download(Long userId, String path, HttpServletResponse response) {
 
@@ -62,7 +64,7 @@ public class ResourceService {
                 log.info("File {} was downloaded successful", path);
 
             } catch (IOException e) {
-                throw new FileOperationErrorException("File download failed");
+                throw new ResourceDownloadException("File download by path " + path + " failed");
             }
         }
     }
@@ -90,24 +92,18 @@ public class ResourceService {
             }
 
             try {
-                minioClient.putObject(
-                        PutObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(fullPath)
-                                .stream(file.getInputStream(), file.getSize(), -1)
-                                .contentType(file.getContentType())
-                                .build()
-                );
-
-                responseDtoList.add(new ResourceResponseDto(
-                        normalizedPath,
-                        file.getOriginalFilename(),
-                        file.getSize(),
-                        "FILE"
-                ));
+                minioStorageService.putObject(fullPath, file.getInputStream(), file.getSize(), file.getContentType());
             } catch (Exception e) {
-                throw new FileUploadException("Failed to upload file" + file.getOriginalFilename());
+                throw new FileUploadException("Failed to upload file " + file.getOriginalFilename(), e);
             }
+
+            responseDtoList.add(new ResourceResponseDto(
+                    normalizedPath,
+                    file.getOriginalFilename(),
+                    file.getSize(),
+                    "FILE"
+            ));
+
         }
         return responseDtoList;
     }
@@ -128,7 +124,6 @@ public class ResourceService {
             String name = parts.length > 0 ? parts[parts.length - 1] : path;
             String parentPath = path.substring(0, path.length() - name.length());
 
-
             return new ResourceResponseDto(
                     parentPath,
                     name,
@@ -142,16 +137,10 @@ public class ResourceService {
     }
 
 
-    @SneakyThrows
     public void deleteFile(Long userId, String path) {
         String fullPath = getUserFolder(userId) + path;
         try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(fullPath)
-                            .build()
-            );
+            minioStorageService.removeObject(fullPath);
         } catch (Exception e) {
             throw new FileOperationErrorException("Failed to delete file " + path);
         }
@@ -160,15 +149,7 @@ public class ResourceService {
 
     private InputStream downloadFile(Long userId, String path) {
         String fullPath = getUserFolder(userId) + path;
-
-        try {
-            return minioClient.getObject(GetObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(fullPath)
-                    .build());
-        } catch (Exception e) {
-            throw new FileOperationErrorException("Failed to download file " + path);
-        }
+        return minioStorageService.getObject(fullPath);
     }
 
 
@@ -184,58 +165,44 @@ public class ResourceService {
         if (fromFullPath.endsWith("/")) {
             directoryService.moveDirectory(userId, fromPath, toPath);
         } else {
-
-            minioClient.copyObject(
-                    CopyObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(toFullPath)
-                            .source(CopySource.builder()
-                                    .bucket(bucketName)
-                                    .object(fromFullPath)
-                                    .build())
-                            .build()
-            );
+            minioStorageService.copyObject(fromFullPath, toFullPath);
 
             deleteFile(userId, fromPath);
         }
 
     }
 
-
-
     @SneakyThrows
     public List<ResourceResponseDto> searchFiles(Long userId, String query) {
         String fullPath = getUserFolder(userId);
-        Iterable<Result<Item>> results = minioClient.listObjects(
-                ListObjectsArgs.builder()
-                        .bucket(bucketName)
-                        .prefix(fullPath)
-                        .recursive(true)
-                        .build()
-        );
+        try {
+            Iterable<Result<Item>> results = minioStorageService.listObjects(fullPath, true);
 
-        List<ResourceResponseDto> resources = new ArrayList<>();
-        String lowerQuery = query.toLowerCase();
+            List<ResourceResponseDto> resources = new ArrayList<>();
+            String lowerQuery = query.toLowerCase();
 
-        for (Result<Item> result : results) {
-            Item item = result.get();
-            String rawName = item.objectName().substring(fullPath.length());
-            String decodedName = URLDecoder.decode(rawName, StandardCharsets.UTF_8);
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                String rawName = item.objectName().substring(fullPath.length());
+                String decodedName = URLDecoder.decode(rawName, StandardCharsets.UTF_8);
 
-            if (decodedName.toLowerCase().contains(lowerQuery)) {
-                String[] parts = decodedName.split("/");
-                String name = parts[parts.length - 1];
-                String parentPath = decodedName.substring(0, decodedName.length() - name.length());
+                if (decodedName.toLowerCase().contains(lowerQuery)) {
+                    String[] parts = decodedName.split("/");
+                    String name = parts[parts.length - 1];
+                    String parentPath = decodedName.substring(0, decodedName.length() - name.length());
 
-                resources.add(new ResourceResponseDto(
-                        parentPath,
-                        name,
-                        item.size(),
-                        "FILE"
-                ));
+                    resources.add(new ResourceResponseDto(
+                            parentPath,
+                            name,
+                            item.size(),
+                            "FILE"
+                    ));
+                }
             }
+            return resources;
+        } catch (Exception e) {
+            throw new FileNotFoundException("Failed to search files: " + e.getMessage());
         }
-        return resources;
     }
 
     @SneakyThrows

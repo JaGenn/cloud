@@ -1,20 +1,32 @@
 package com.example.cloud.service.minio;
+
 import com.example.cloud.exception.DirectoryOperationErrorException;
+import com.example.cloud.exception.ResourceDownloadException;
 import com.example.cloud.model.dto.response.DirectoryResponseDto;
 import com.example.cloud.model.dto.response.ResourceResponseDto;
-import io.minio.*;
+import io.minio.ListObjectsArgs;
+import io.minio.MinioClient;
+import io.minio.Result;
+import io.minio.errors.MinioException;
 import io.minio.messages.Item;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static com.example.cloud.util.PathUtils.normalizeDirectoryPath;
 import static com.example.cloud.util.UserContext.getUserFolder;
 
 
@@ -26,6 +38,7 @@ public class DirectoryService {
     private String bucketName;
 
     private final MinioClient minioClient;
+    private final MinioStorageService minioStorageService;
 
     @SneakyThrows
     public DirectoryResponseDto createDirectory(Long userId, String path) {
@@ -34,51 +47,46 @@ public class DirectoryService {
         if (directoryAlreadyExists(fullPath)) {
             throw new DirectoryOperationErrorException("Directory '" + fullPath + "' already exists");
         }
+        try {
+            minioStorageService.putObject(fullPath, new ByteArrayInputStream(new byte[0]), 0,
+                    MediaType.APPLICATION_OCTET_STREAM_VALUE);
 
-        minioClient.putObject(
-                PutObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(fullPath)
-                        .stream(new java.io.ByteArrayInputStream(new byte[0]), 0, -1)
-                        .contentType("application/octet-stream")
-                        .build()
-        );
-        return getDirectoryInfo(userId, path);
+            return getDirectoryInfo(userId, path);
+        } catch (Exception e) {
+            throw new FileUploadException("Create directory '" + path + "' was failed");
+        }
     }
 
-    @SneakyThrows
+
     public List<ResourceResponseDto> getDirectoryContent(Long userId, String path) {
         String fullPath = normalizeDirectoryPath(getUserFolder(userId) + path);
+        try {
+            Iterable<Result<Item>> results = minioStorageService.listObjects(fullPath, false);
 
-        Iterable<Result<Item>> results = minioClient.listObjects(
-                ListObjectsArgs.builder()
-                        .bucket(bucketName)
-                        .prefix(fullPath)
-                        .recursive(false)
-                        .build()
-        );
+            List<ResourceResponseDto> resources = new ArrayList<>();
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                String objectName = item.objectName().substring(getUserFolder(userId).length());
+                String[] parts = objectName.split("/");
+                String name = parts[parts.length - 1];
+                String parentPath = objectName.contains("/")
+                        ? objectName.substring(0, objectName.length() - (name.length() + 1))
+                        : "/";
 
-        List<ResourceResponseDto> resources = new ArrayList<>();
-        for (Result<Item> result : results) {
-            Item item = result.get();
-            String objectName = item.objectName().substring(getUserFolder(userId).length());
-            String[] parts = objectName.split("/");
-            String name = parts[parts.length - 1];
-            String parentPath = objectName.contains("/")
-                    ? objectName.substring(0, objectName.length() - (name.length() + 1))
-                    : "/";
-
-            resources.add(new ResourceResponseDto(
-                    parentPath.endsWith("/") ? parentPath : parentPath + "/",
-                    item.isDir() ? name + "/" : name,
-                    item.size(),
-                    item.isDir() ? "DIRECTORY" : "FILE"
-            ));
+                resources.add(new ResourceResponseDto(
+                        parentPath.endsWith("/") ? parentPath : parentPath + "/",
+                        item.isDir() ? name + "/" : name,
+                        item.size(),
+                        item.isDir() ? "DIRECTORY" : "FILE"
+                ));
+            }
+            return resources;
+        } catch (Exception e) {
+            throw new DirectoryOperationErrorException("Failed to get '" + fullPath + "' content");
         }
-        return resources;
     }
 
-    @SneakyThrows
+
     public DirectoryResponseDto getDirectoryInfo(Long userId, String path) {
         String fullPath = normalizeDirectoryPath(getUserFolder(userId) + path);
 
@@ -105,7 +113,6 @@ public class DirectoryService {
         }
     }
 
-    @SneakyThrows
     public void moveDirectory(Long userId, String fromPath, String toPath) {
         String fromFullPath = normalizeDirectoryPath(getUserFolder(userId) + fromPath);
         String toFullPath = normalizeDirectoryPath(getUserFolder(userId) + toPath);
@@ -113,33 +120,20 @@ public class DirectoryService {
         if (directoryAlreadyExists(toFullPath)) {
             throw new DirectoryOperationErrorException("Directory '" + toPath + "' already exists");
         }
+        try {
+            Iterable<Result<Item>> results = minioStorageService.listObjects(fromFullPath, true);
 
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                String objectName = item.objectName();
+                String relativePath = objectName.substring(fromFullPath.length());
 
-        Iterable<Result<Item>> results = minioClient.listObjects(
-                ListObjectsArgs.builder()
-                        .bucket(bucketName)
-                        .prefix(fromFullPath)
-                        .recursive(true)
-                        .build()
-        );
+                String newObjectName = toFullPath + relativePath;
 
-        for (Result<Item> result : results) {
-            Item item = result.get();
-            String objectName = item.objectName();
-            String relativePath = objectName.substring(fromFullPath.length());
-
-            String newObjectName = toFullPath + relativePath;
-
-            minioClient.copyObject(
-                    CopyObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(newObjectName)
-                            .source(CopySource.builder()
-                                    .bucket(bucketName)
-                                    .object(objectName)
-                                    .build())
-                            .build()
-            );
+                minioStorageService.copyObject(objectName, newObjectName);
+            }
+        } catch (MinioException | IOException | GeneralSecurityException e) {
+            throw new DirectoryOperationErrorException("Failed to move directory '" + toFullPath + "' to '" + fromFullPath + "'");
         }
 
         deleteDirectory(userId, fromPath);
@@ -148,77 +142,49 @@ public class DirectoryService {
 
     public void deleteDirectory(Long userId, String path) {
         String fullPath = normalizeDirectoryPath(getUserFolder(userId) + path);
-
         try {
-            Iterable<Result<Item>> objects = minioClient.listObjects(
-                    ListObjectsArgs.builder()
-                            .bucket(bucketName)
-                            .prefix(fullPath)
-                            .recursive(true)
-                            .build()
-            );
+            Iterable<Result<Item>> objects = minioStorageService.listObjects(fullPath, true);
 
             for (Result<Item> result : objects) {
-                minioClient.removeObject(
-                        RemoveObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(result.get().objectName())
-                                .build()
-                );
+                minioStorageService.removeObject(result.get().objectName());
             }
+
         } catch (Exception e) {
             throw new DirectoryOperationErrorException("Failed to delete directory " + path);
         }
     }
 
-    @SneakyThrows
+
     public void downloadDirectoryAsZip(Long userId, String path, HttpServletResponse response) {
         String fullPath = normalizeDirectoryPath(getUserFolder(userId) + path);
 
         try (ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream())) {
-            Iterable<Result<Item>> results = minioClient.listObjects(
-                    ListObjectsArgs.builder()
-                            .bucket(bucketName)
-                            .prefix(fullPath)
-                            .recursive(true) // Обходим все вложенные файлы
-                            .build()
-            );
+            Iterable<Result<Item>> results = minioStorageService.listObjects(fullPath, true);
 
             for (Result<Item> result : results) {
                 Item item = result.get();
                 if (item.isDir()) {
-                    continue; // Пропускаем пустые директории
+                    continue;
                 }
 
                 String objectName = item.objectName();
-                String relativeName = objectName.substring(fullPath.length()); // путь внутри ZIP
+                String relativeName = objectName.substring(fullPath.length());
 
-                // Получаем поток файла из MinIO
-                try (InputStream is = minioClient.getObject(
-                        GetObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(objectName)
-                                .build()
-                )) {
-                    // Добавляем в ZIP
+                try (InputStream is = minioStorageService.getObject(objectName)) {
                     zipOut.putNextEntry(new ZipEntry(relativeName));
                     is.transferTo(zipOut);
                     zipOut.closeEntry();
                 }
             }
+        } catch (Exception e) {
+            throw new ResourceDownloadException("Failed to download directory '" + fullPath + "'");
         }
     }
 
     @SneakyThrows
     private boolean directoryAlreadyExists(String path) {
-        Iterable<Result<Item>> existing = minioClient.listObjects(
-                ListObjectsArgs.builder()
-                        .bucket(bucketName)
-                        .prefix(path.endsWith("/") ? path : path + "/")
-                        .recursive(true)
-                        .build()
-        );
-
+        String normalizedPath = normalizeDirectoryPath(path);
+        Iterable<Result<Item>> existing = minioStorageService.listObjects(normalizedPath, true);
         for (Result<Item> result : existing) {
             if (result.get() != null) {
                 return true;
@@ -227,8 +193,4 @@ public class DirectoryService {
         return false;
     }
 
-    private String normalizeDirectoryPath(String fullPath) {
-        String normalizedPath = fullPath.replace("//", "/");
-        return normalizedPath.endsWith("/") ? normalizedPath : normalizedPath + "/";
-    }
 }
