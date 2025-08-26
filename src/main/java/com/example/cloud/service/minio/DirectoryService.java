@@ -2,6 +2,7 @@ package com.example.cloud.service.minio;
 
 import com.example.cloud.exception.DirectoryOperationErrorException;
 import com.example.cloud.exception.ResourceDownloadException;
+import com.example.cloud.model.dto.enums.ResourceType;
 import com.example.cloud.model.dto.response.DirectoryResponseDto;
 import com.example.cloud.model.dto.response.ResourceResponseDto;
 import io.minio.ListObjectsArgs;
@@ -77,7 +78,7 @@ public class DirectoryService {
                         parentPath.endsWith("/") ? parentPath : parentPath + "/",
                         item.isDir() ? name + "/" : name,
                         item.size(),
-                        item.isDir() ? "DIRECTORY" : "FILE"
+                        item.isDir() ? ResourceType.DIRECTORY : ResourceType.FILE
                 ));
             }
             return resources;
@@ -106,7 +107,7 @@ public class DirectoryService {
             return new DirectoryResponseDto(
                     parentPath.endsWith("/") ? parentPath : parentPath + "/",
                     name,
-                    "DIRECTORY"
+                    ResourceType.DIRECTORY
             );
         } else {
             throw new DirectoryOperationErrorException("Directory " + path + " not found");

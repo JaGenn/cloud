@@ -1,5 +1,6 @@
 package com.example.cloud.model.dto.response;
 
+import com.example.cloud.model.dto.enums.ResourceType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Directory Dto")
@@ -12,6 +13,6 @@ public record DirectoryResponseDto (
         String name,
 
         @Schema(description = "Type of resource", example = "DIRECTORY")
-        String type
+        ResourceType type
 
 ) {}

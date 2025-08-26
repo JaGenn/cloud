@@ -1,5 +1,6 @@
 package com.example.cloud.model.dto.response;
 
+import com.example.cloud.model.dto.enums.ResourceType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "File Dto")
@@ -15,5 +16,5 @@ public record ResourceResponseDto (
         long size,
 
         @Schema(description = "Type of resource", example = "FILE")
-        String type
+        ResourceType type
 ) { }

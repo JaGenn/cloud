@@ -2,6 +2,7 @@ package com.example.cloud.service.minio;
 
 import com.example.cloud.exception.FileOperationErrorException;
 import com.example.cloud.exception.ResourceDownloadException;
+import com.example.cloud.model.dto.enums.ResourceType;
 import com.example.cloud.model.dto.response.ResourceResponseDto;
 import com.example.cloud.util.PathUtils;
 import io.minio.*;
@@ -101,7 +102,7 @@ public class ResourceService {
                     normalizedPath,
                     file.getOriginalFilename(),
                     file.getSize(),
-                    "FILE"
+                    ResourceType.FILE
             ));
 
         }
@@ -128,7 +129,7 @@ public class ResourceService {
                     parentPath,
                     name,
                     stat.size(),
-                    "FILE"
+                    ResourceType.FILE
             );
         } catch (Exception e) {
             throw new FileNotFoundException("File " + path + " not found: " + e.getMessage());
@@ -195,7 +196,7 @@ public class ResourceService {
                             parentPath,
                             name,
                             item.size(),
-                            "FILE"
+                            ResourceType.FILE
                     ));
                 }
             }
