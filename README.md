@@ -15,6 +15,7 @@
 - Spring Sessions
 - Redis
 - Docker
+- Liquibase
 - REST
 - Spring Data JPA
 - Minio (NoSQL хранилище)
