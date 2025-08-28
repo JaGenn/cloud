@@ -6,6 +6,7 @@
 
 Многопользовательское файловое облако. Пользователи сервиса могут использовать его для загрузки и хранения файлов. Шестой проект из [Java роадмапа](https://zhukovsd.github.io/java-backend-learning-course/) Сергея Жукова
 
+
 <img width="1918" height="974" alt="image" src="https://github.com/user-attachments/assets/02a4e591-390d-46a0-a0ba-5e0b981a01d5" />
 <img width="1919" height="973" alt="image" src="https://github.com/user-attachments/assets/99192e9d-5775-4971-a28e-d94046036791" />
 
