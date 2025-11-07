@@ -1,7 +1,5 @@
 # Проект "Облачное хранилище файлов"
 
-Проект был развернут по ссылке - http://85.235.205.25:3000/
-
 [Тз проекта](https://zhukovsd.github.io/java-backend-learning-course/projects/cloud-file-storage/)
 
 Многопользовательское файловое облако. Пользователи сервиса могут использовать его для загрузки и хранения файлов. Шестой проект из [Java роадмапа](https://zhukovsd.github.io/java-backend-learning-course/) Сергея Жукова
